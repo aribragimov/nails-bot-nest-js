@@ -1,0 +1,14 @@
+FROM node:20-alpine
+
+ENV NODE_ENV development
+
+RUN apk --no-cache add --virtual builds-deps build-base postgresql-client git
+RUN npm install -g @nestjs/cli
+
+USER node
+WORKDIR /home/node
+
+RUN mkdir -p node_modules \
+ && chown -R node node_modules
+
+COPY --chown=node:node . .
