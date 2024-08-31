@@ -1,7 +1,7 @@
 import { Logger, Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 
-import { TelegramBotService } from './tg-bot.service';
+import { TelegramBotService } from './bot.service';
 
 import { WindowModule } from '../window';
 

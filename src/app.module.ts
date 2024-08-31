@@ -6,7 +6,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { DataSourceOptions } from 'typeorm';
 
 import { HealthController } from './health/health.controller';
-import { TelegramBotModule } from './module/tg-bot';
+import { TelegramBotModule } from './module/bot';
 import { SvcConfigModule } from './config';
 
 @Module({

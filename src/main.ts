@@ -1,7 +1,7 @@
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 
-import { TelegramBotService } from './module/tg-bot';
+import { TelegramBotService } from './module/bot';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
