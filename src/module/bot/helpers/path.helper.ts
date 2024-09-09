@@ -1,3 +1,3 @@
 export function getSplitPath(path: string) {
-  return path.split('/').filter(path => path !== '');
+  return path.split('/').filter(value => value !== '');
 }
