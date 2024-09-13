@@ -5,16 +5,19 @@ import { parseInt } from 'lodash';
 import { DateTime } from 'luxon';
 import { DataSource } from 'typeorm';
 
-import { timezone } from 'src/config/timezone.config';
-
 import { forEachPromise, getRepository, withTransaction } from 'src/common/helpers';
 import { DomainServiceOptions } from 'src/common/types';
 
 import { WindowEntity } from './window.entity';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class WindowService {
-  constructor(private readonly logger: Logger, private readonly datasource: DataSource) {
+  constructor(
+    private readonly logger: Logger,
+    private readonly datasource: DataSource,
+    private readonly configService: ConfigService,
+  ) {
     this.logger = new Logger(WindowService.name);
   }
 
@@ -42,7 +45,9 @@ export class WindowService {
               hour: parseInt(hours),
               minute: parseInt(minutes),
             },
-            timezone,
+            {
+              zone: this.configService.get<string>('config.timezone'),
+            },
           ).toJSDate();
 
           const dateKey = dateObj.toISOString();
@@ -69,8 +74,8 @@ export class WindowService {
     const uniqueDates: Record<string, Date> = {};
     const currentYear = DateTime.now().year;
 
-    const month = path.split('/')[3].split('=')[1];
-    const day = path.split('/')[4].split('=')[1];
+    const month = path.split('/')[5];
+    const day = path.split('/')[7];
 
     const times = text.split(', ');
 
@@ -84,7 +89,7 @@ export class WindowService {
           hour: parseInt(hours),
           minute: parseInt(minutes),
         },
-        timezone,
+        { zone: this.configService.get<string>('config.timezone') },
       ).toJSDate();
 
       const dateKey = dateObj.toISOString();
@@ -108,19 +113,16 @@ export class WindowService {
   }
 
   public async createMany(parsedDates: Date[]) {
-    let result: string[] = [];
+    let result: Date[] = [];
 
     await withTransaction(this.datasource, async queryRunner => {
-      const createdWindows: WindowEntity[] = await forEachPromise(parsedDates, async parsedDate =>
-        this.create({ date: parsedDate }, { queryRunner }),
-      );
-
-      if (!createdWindows.length) return;
-
-      result = await this.buildCreateResponse(createdWindows.map(createdWindow => createdWindow.date));
+      await forEachPromise(parsedDates, async parsedDate => {
+        const createdWindow = await this.create({ date: parsedDate }, { queryRunner });
+        result.push(createdWindow.date);
+      });
     });
 
-    return result;
+    return this.buildCreateResponse(result);
   }
 
   public async create(
@@ -133,11 +135,11 @@ export class WindowService {
     return windowRepository.save(entity);
   }
 
-  private async buildCreateResponse(dates: Date[]): Promise<string[]> {
+  private buildCreateResponse(dates: Date[]): string[] {
     const result: string[] = [];
 
     const groupedDates = dates.reduce((acc: { [key: string]: string[] }, date) => {
-      const dt = DateTime.fromJSDate(date);
+      const dt = DateTime.fromJSDate(date).setZone(this.configService.get<string>('config.timezone'));
       const dayMonth = dt.toFormat('dd.MM');
 
       if (!acc[dayMonth]) {
@@ -149,7 +151,7 @@ export class WindowService {
       return acc;
     }, {});
 
-    await forEachPromise(Object.entries(groupedDates), async ([dayMonth, times]) => {
+    Object.entries(groupedDates).forEach(([dayMonth, times]) => {
       let preResult = `${dayMonth}: `;
       preResult += times.map(time => `  ${time}`).join(',');
       result.push(preResult.trim());

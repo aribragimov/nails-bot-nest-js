@@ -18,6 +18,7 @@ import {
 import { Option } from './interfaces';
 
 import { WindowService } from '../window';
+import { createWindowMainOptions, getWindowMainOptions, startAdminOptions, startUserOptions } from './options';
 
 @Injectable()
 export class TelegramBotService {
@@ -25,7 +26,10 @@ export class TelegramBotService {
 
   private readonly bot: TelegramBot;
 
-  constructor(private readonly configService: ConfigService, private readonly windowService: WindowService) {
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly windowService: WindowService,
+  ) {
     const token = this.configService.get<string>('config.tgBot.token');
     if (!token) {
       throw new Error('Telegram Bot Token not found in configuration.');
@@ -42,22 +46,14 @@ export class TelegramBotService {
         return this.bot.sendMessage(
           chatId,
           '[ADMIN]\n Добро пожаловать в тестовую версию бота,\n выберите что вы хотите сделать:',
-          this.generateOptions([
-            { callback_data: botCommands.win.create.main, text: 'Добавить окошки' },
-            { callback_data: botCommands.win.get.main, text: 'Посмотреть окошки' },
-            { callback_data: botCommands.win.update.main, text: 'Обновить окошко' },
-            // [{ callback_data: '/win/delete', text: 'Удалить окошко' }],
-          ]),
+          this.generateOptions(startAdminOptions),
         );
       }
 
       return this.bot.sendMessage(
         chatId,
         'Добро пожаловать в тестовую версию бота,\n выберите что вы хотите сделать:',
-        this.generateOptions([
-          { callback_data: botCommands.win.get.main, text: 'Хочу узнать когда есть свободные окошки' },
-          // [{ text: '/g/prise', callback_data: 'Хочу узнать цены' }],
-        ]),
+        this.generateOptions(startUserOptions),
       );
     });
 
@@ -76,6 +72,33 @@ export class TelegramBotService {
 
       if (path) {
         // -------------------------------------------------------------------------------------
+        // START
+        // -------------------------------------------------------------------------------------
+        if (path === botCommands.start.main) {
+          const adminIds = this.configService.get<string[]>(`config.adminIds`);
+          console.log(chatId);
+          if (adminIds && adminIds.includes(chatId.toString()) && chatId) {
+            return this.bot.editMessageText(
+              '[ADMIN]\n Добро пожаловать в тестовую версию бота,\n выберите что вы хотите сделать:',
+              {
+                chat_id: chatId,
+                message_id: messageId,
+                ...this.generateOptions(startAdminOptions),
+              },
+            );
+          }
+
+          return this.bot.editMessageText(
+            'Добро пожаловать в тестовую версию бота,\n выберите что вы хотите сделать:',
+            {
+              chat_id: chatId,
+              message_id: messageId,
+              ...this.generateOptions(startUserOptions),
+            },
+          );
+        }
+
+        // -------------------------------------------------------------------------------------
         // CREATE
         // -------------------------------------------------------------------------------------
 
@@ -84,11 +107,7 @@ export class TelegramBotService {
           return this.bot.editMessageText('Выберите действие', {
             chat_id: chatId,
             message_id: messageId,
-            ...this.generateOptions([
-              this.addBackButton(botCommands.start.main),
-              { callback_data: botCommands.win.create.one.main, text: 'Добавить окошки на один день' },
-              { callback_data: botCommands.win.create.many.main, text: 'Добавить окошки на разные даты' },
-            ]),
+            ...this.generateOptions(createWindowMainOptions, botCommands.start.main),
           });
         }
 
@@ -101,11 +120,13 @@ export class TelegramBotService {
           return this.bot.editMessageText('Выберите месяц', {
             chat_id: chatId,
             message_id: messageId,
-            ...this.generateOptions([
-              this.addBackButton(botCommands.win.create.main),
-              { text: getMonthName(thisMonth), callback_data: `/win/create/one/month/${thisMonth}` },
-              { text: getMonthName(nextMonth), callback_data: `/win/create/one/month/${nextMonth}` },
-            ]),
+            ...this.generateOptions(
+              [
+                { text: getMonthName(thisMonth), callback_data: `/win/c/one/month/${thisMonth}` },
+                { text: getMonthName(nextMonth), callback_data: `/win/c/one/month/${nextMonth}` },
+              ],
+              botCommands.win.create.main,
+            ),
           });
         }
 
@@ -136,7 +157,9 @@ export class TelegramBotService {
             });
           }
 
-          return this.bot.sendMessage(chatId, 'Выберите день', {
+          return this.bot.editMessageText('Выберите день', {
+            chat_id: chatId,
+            message_id: messageId,
             reply_markup: {
               inline_keyboard: [...splitDaysOnWeek(allDays), [this.addBackButton(botCommands.win.create.one.main)]],
             },
@@ -147,6 +170,7 @@ export class TelegramBotService {
           return this.bot
             .sendMessage(chatId, 'Пришлите время окошек в формате:\n10:00, 11:00, 12:00\n')
             .then(async () => {
+              this.bot.removeTextListener(botCommands.win.create.one.regex);
               this.bot.onText(botCommands.win.create.one.regex, async replyMsg => {
                 const { text } = replyMsg;
 
@@ -165,12 +189,7 @@ export class TelegramBotService {
         if (path === botCommands.win.create.many.main) {
           return this.bot
             .editMessageText(
-              `Пришлите одно или несколько окошек в формате:\n
-            число\\.месяц: часы:минуты, часы:минуты\n
-            \n
-            Пример:\n
-            01\\.01: 10:00, 11:00, 12:00\n
-            02\\.01: 16:35, 18:20, 19:00`,
+              `Пришлите одно или несколько окошек в формате:\nчисло\\.месяц: часы:минуты, часы:минуты\n\nПример:\n01\\.01: 10:00, 11:00, 12:00\n02\\.01: 16:35, 18:20, 19:00`,
               {
                 chat_id: chatId,
                 message_id: messageId,
@@ -178,6 +197,7 @@ export class TelegramBotService {
               },
             )
             .then(async () => {
+              this.bot.removeTextListener(botCommands.win.create.many.regex);
               this.bot.onText(botCommands.win.create.many.regex, async replyMsg => {
                 const { text } = replyMsg;
 
@@ -198,18 +218,11 @@ export class TelegramBotService {
 
         // GET MAIN
         if (path === botCommands.win.get.main) {
-          return this.bot.sendMessage(
-            chatId,
-            'Выберите действие',
-            this.generateOptions([
-              { callback_data: botCommands.win.get.today, text: 'На сегодня' },
-              { callback_data: botCommands.win.get.week, text: 'На этой неделе' },
-              { callback_data: botCommands.win.get.nextWeek, text: 'На следующей неделе' },
-              { callback_data: botCommands.win.get.month, text: 'В этом месяц' },
-              { callback_data: botCommands.win.get.all, text: 'Все' },
-              this.addBackButton('/start'),
-            ]),
-          );
+          return this.bot.editMessageText('Выберите действие', {
+            chat_id: chatId,
+            message_id: messageId,
+            ...this.generateOptions(getWindowMainOptions, botCommands.start.main),
+          });
         }
 
         // GET All TODAY WINDOWS
@@ -349,10 +362,16 @@ export class TelegramBotService {
     });
   }
 
-  private generateOptions(options: Option[]) {
+  private generateOptions(options: Option[], backButtonPath?: string) {
+    const keyboardOptions = [...options];
+
+    if (backButtonPath) {
+      keyboardOptions.unshift(this.addBackButton(backButtonPath));
+    }
+
     return {
       reply_markup: {
-        inline_keyboard: options.map(option => [option]),
+        inline_keyboard: [...keyboardOptions.map(option => [option])],
       },
     };
   }
