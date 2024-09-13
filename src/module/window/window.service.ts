@@ -201,6 +201,8 @@ export class WindowService {
 
     const results = this.buildGetResponse(windows.map(window => window.date));
 
+    console.log(results);
+
     return Ok(`Окошки на этой неделе:\n\n${results}`);
   }
 
@@ -269,11 +271,11 @@ export class WindowService {
       .getMany();
   }
 
-  private async buildGetResponse(dates: Date[]): Promise<string> {
+  private buildGetResponse(dates: Date[]): string {
     let result: string = '';
 
     const groupedDates = dates.reduce((acc: { [key: string]: string[] }, date) => {
-      const dt = DateTime.fromJSDate(date);
+      const dt = DateTime.fromJSDate(date).setZone(this.configService.get<string>('config.timezone'));
       const dayMonth = dt.toFormat('dd.MM');
 
       if (!acc[dayMonth]) {
@@ -285,7 +287,7 @@ export class WindowService {
       return acc;
     }, {});
 
-    await forEachPromise(Object.entries(groupedDates), async ([dayMonth, times]) => {
+    Object.entries(groupedDates).forEach(([dayMonth, times]) => {
       let preResult = `${dayMonth}: `;
       preResult += times.map(time => `  ${time}`).join(',');
       preResult += '\n';

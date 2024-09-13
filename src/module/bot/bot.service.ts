@@ -225,13 +225,6 @@ export class TelegramBotService {
           });
         }
 
-        // GET All TODAY WINDOWS
-        if (path === botCommands.win.get.today) {
-          const result = await this.windowService.getWindowsToday();
-          if (result.isErr()) return this.bot.sendMessage(chatId, result.unwrapErr());
-          return this.bot.sendMessage(chatId, result.unwrap());
-        }
-
         // GET TODAY WINDOWS
         if (path === botCommands.win.get.today) {
           const result = await this.windowService.getWindowsToday();
