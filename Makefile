@@ -26,7 +26,7 @@ build:
 	${DOCKER_COMPOSE_RUN} -e "NODE_ENV=${NODE_ENV}" app nest build
 
 app:
-	${DOCKER_COMPOSE_RUN} -e "NODE_ENV=${NODE_ENV}" --service-ports app
+	${DOCKER_COMPOSE_RUN} -e "NODE_ENV=${NODE_ENV}" --service-ports app npm run start:dev
 
 test-unit:
 	${DOCKER_COMPOSE_RUN} -e "NODE_ENV=test" app yarn test
