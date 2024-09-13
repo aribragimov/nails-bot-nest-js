@@ -177,7 +177,7 @@ export class WindowService {
       .orderBy('window.date', 'ASC')
       .getMany();
 
-    if (!windows) return Err('Окошек нет');
+    if (!windows.length) return Err('Окошек нет');
 
     const results = await this.buildGetResponse(windows.map(window => window.date));
 
