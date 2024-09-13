@@ -6,4 +6,5 @@ export default registerAs('config', () => ({
     token: process.env.TG_BOT_TOKEN,
   },
   adminIds: [process.env.ADMIN_AR, process.env.ADMIN_AN],
+  timezone: process.env.TIMEZONE,
 }));
