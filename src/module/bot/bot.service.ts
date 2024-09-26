@@ -39,7 +39,6 @@ export class TelegramBotService {
 
   public initBot() {
     this.bot.onText(botCommands.start.regex, msg => {
-      this.bot.removeAllListeners();
       const chatId: string = msg.chat.id.toString();
       const adminIds = this.configService.get<string[]>(`config.adminIds`);
 
@@ -76,9 +75,7 @@ export class TelegramBotService {
         // START
         // -------------------------------------------------------------------------------------
         if (path === botCommands.start.main) {
-          this.bot.removeAllListeners();
           const adminIds = this.configService.get<string[]>(`config.adminIds`);
-          console.log(chatId);
           if (adminIds && adminIds.includes(chatId.toString()) && chatId) {
             return this.bot.editMessageText(
               '[ADMIN]\n Добро пожаловать в тестовую версию бота,\n выберите что вы хотите сделать:',
@@ -345,8 +342,6 @@ export class TelegramBotService {
             callback_data: `${path}/win/${window.id}`,
             text: DateTime.fromJSDate(window.date).toFormat('HH:mm').toString(),
           }));
-
-          console.log(JSON.stringify(splitWindowsOnDay(windowsData), null, 2));
 
           return this.bot.sendMessage(chatId, 'Выберите окошко', {
             reply_markup: {
