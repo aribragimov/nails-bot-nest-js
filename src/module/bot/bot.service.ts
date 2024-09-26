@@ -39,6 +39,7 @@ export class TelegramBotService {
 
   public initBot() {
     this.bot.onText(botCommands.start.regex, msg => {
+      this.bot.removeAllListeners();
       const chatId: string = msg.chat.id.toString();
       const adminIds = this.configService.get<string[]>(`config.adminIds`);
 
@@ -75,6 +76,7 @@ export class TelegramBotService {
         // START
         // -------------------------------------------------------------------------------------
         if (path === botCommands.start.main) {
+          this.bot.removeAllListeners();
           const adminIds = this.configService.get<string[]>(`config.adminIds`);
           console.log(chatId);
           if (adminIds && adminIds.includes(chatId.toString()) && chatId) {
@@ -168,7 +170,10 @@ export class TelegramBotService {
 
         if (botCommands.win.create.one.selectDay.regex.test(path)) {
           return this.bot
-            .sendMessage(chatId, 'Пришлите время окошек в формате:\n10:00, 11:00, 12:00\n')
+            .editMessageText('Пришлите время окошек в формате:\n10:00, 11:00, 12:00\n', {
+              chat_id: chatId,
+              message_id: messageId,
+            })
             .then(async () => {
               this.bot.removeTextListener(botCommands.win.create.one.regex);
               this.bot.onText(botCommands.win.create.one.regex, async replyMsg => {
@@ -254,7 +259,7 @@ export class TelegramBotService {
         }
 
         // GET ALL WINDOWS
-        if (path === botCommands.win.get.month) {
+        if (path === botCommands.win.get.all) {
           const result = await this.windowService.getAllWindows();
           if (result.isErr()) return this.bot.sendMessage(chatId, result.unwrapErr());
           return this.bot.sendMessage(chatId, result.unwrap());

@@ -3,7 +3,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Err, Ok, Result } from '@thames/monads';
 import { parseInt } from 'lodash';
 import { DateTime } from 'luxon';
-import { DataSource } from 'typeorm';
+import { DataSource, MoreThan, MoreThanOrEqual } from 'typeorm';
 
 import { forEachPromise, getRepository, withTransaction } from 'src/common/helpers';
 import { DomainServiceOptions } from 'src/common/types';
@@ -197,11 +197,9 @@ export class WindowService {
       .orderBy('window.date', 'ASC')
       .getMany();
 
-    if (!windows) return Err('Окошек нет');
+    if (!windows.length) return Err('Окошек нет');
 
     const results = this.buildGetResponse(windows.map(window => window.date));
-
-    console.log(results);
 
     return Ok(`Окошки на этой неделе:\n\n${results}`);
   }
@@ -219,7 +217,7 @@ export class WindowService {
       .orderBy('window.date', 'ASC')
       .getMany();
 
-    if (!windows) return Err('Окошек нет');
+    if (!windows.length) return Err('Окошек нет');
 
     const results = this.buildGetResponse(windows.map(window => window.date));
 
@@ -239,7 +237,7 @@ export class WindowService {
       .orderBy('window.date', 'ASC')
       .getMany();
 
-    if (!windows) return Err('Окошек нет');
+    if (!windows.length) return Err('Окошек нет');
 
     const results = this.buildGetResponse(windows.map(window => window.date));
 
@@ -249,13 +247,19 @@ export class WindowService {
   public async getAllWindows({ queryRunner }: DomainServiceOptions = {}): Promise<Result<string, string>> {
     const startDate = DateTime.now().toJSDate();
 
-    const windows = await getRepository(queryRunner ?? this.datasource, WindowEntity)
-      .createQueryBuilder('window')
-      .where('window.date >= :startDate', { startDate })
-      .orderBy('window.date', 'ASC')
-      .getMany();
+    const windowsRepo = getRepository(queryRunner ?? this.datasource, WindowEntity);
+    const windows = await windowsRepo.find({
+      where: {
+        date: MoreThanOrEqual(startDate),
+      },
+      order: {
+        date: {
+          direction: 'ASC',
+        },
+      },
+    });
 
-    if (!windows) return Err('Окошек нет');
+    if (!windows.length) return Err('Окошек нет');
 
     const results = this.buildGetResponse(windows.map(window => window.date));
 
